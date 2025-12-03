@@ -14,7 +14,141 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      formas: {
+        Row: {
+          capacity: number
+          code: string
+          created_at: string
+          height_cm: number
+          id: string
+          length_cm: number
+          name: string
+          status: Database["public"]["Enums"]["forma_status"]
+          updated_at: string
+          width_cm: number
+        }
+        Insert: {
+          capacity?: number
+          code: string
+          created_at?: string
+          height_cm: number
+          id?: string
+          length_cm: number
+          name: string
+          status?: Database["public"]["Enums"]["forma_status"]
+          updated_at?: string
+          width_cm: number
+        }
+        Update: {
+          capacity?: number
+          code?: string
+          created_at?: string
+          height_cm?: number
+          id?: string
+          length_cm?: number
+          name?: string
+          status?: Database["public"]["Enums"]["forma_status"]
+          updated_at?: string
+          width_cm?: number
+        }
+        Relationships: []
+      }
+      obras: {
+        Row: {
+          code: string
+          created_at: string
+          deadline: string
+          id: string
+          location: string
+          name: string
+          priority: Database["public"]["Enums"]["priority_level"]
+          status: Database["public"]["Enums"]["obra_status"]
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          deadline: string
+          id?: string
+          location: string
+          name: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          status?: Database["public"]["Enums"]["obra_status"]
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          deadline?: string
+          id?: string
+          location?: string
+          name?: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          status?: Database["public"]["Enums"]["obra_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      production_items: {
+        Row: {
+          created_at: string
+          end_date: string
+          forma_id: string
+          id: string
+          notes: string | null
+          obra_id: string
+          priority: Database["public"]["Enums"]["priority_level"]
+          produced: number
+          quantity: number
+          start_date: string
+          status: Database["public"]["Enums"]["production_item_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          forma_id: string
+          id?: string
+          notes?: string | null
+          obra_id: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          produced?: number
+          quantity?: number
+          start_date: string
+          status?: Database["public"]["Enums"]["production_item_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          forma_id?: string
+          id?: string
+          notes?: string | null
+          obra_id?: string
+          priority?: Database["public"]["Enums"]["priority_level"]
+          produced?: number
+          quantity?: number
+          start_date?: string
+          status?: Database["public"]["Enums"]["production_item_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_items_forma_id_fkey"
+            columns: ["forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_items_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +157,14 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      forma_status: "available" | "in-use" | "maintenance"
+      obra_status: "active" | "paused" | "completed"
+      priority_level: "critical" | "high" | "medium" | "low"
+      production_item_status:
+        | "pending"
+        | "in-progress"
+        | "completed"
+        | "delayed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +291,16 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      forma_status: ["available", "in-use", "maintenance"],
+      obra_status: ["active", "paused", "completed"],
+      priority_level: ["critical", "high", "medium", "low"],
+      production_item_status: [
+        "pending",
+        "in-progress",
+        "completed",
+        "delayed",
+      ],
+    },
   },
 } as const
