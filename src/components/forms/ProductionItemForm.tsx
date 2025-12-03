@@ -23,6 +23,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
   const [endDate, setEndDate] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [notes, setNotes] = useState('');
+  const [pieceHeight, setPieceHeight] = useState(''); // New state
+  const [pieceWidth, setPieceWidth] = useState('');   // New state
+  const [pieceLength, setPieceLength] = useState(''); // New state
+  const [unitProductionTimeMinutes, setUnitProductionTimeMinutes] = useState(''); // New state
 
   const createItem = useCreateProductionItem();
 
@@ -37,6 +41,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
         endDate: new Date(endDate),
         priority,
         notes: notes || undefined,
+        pieceHeight: Number(pieceHeight), // Include new field
+        pieceWidth: Number(pieceWidth),   // Include new field
+        pieceLength: Number(pieceLength), // Include new field
+        unitProductionTimeMinutes: Number(unitProductionTimeMinutes), // Include new field
       },
       {
         onSuccess: () => {
@@ -48,6 +56,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
           setEndDate('');
           setPriority('medium');
           setNotes('');
+          setPieceHeight(''); // Reset new field
+          setPieceWidth('');  // Reset new field
+          setPieceLength(''); // Reset new field
+          setUnitProductionTimeMinutes(''); // Reset new field
         },
       }
     );
@@ -83,7 +95,7 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="forma">Forma/Seção</Label>
+              <Label htmlFor="forma">Forma/Seção Inicial</Label>
               <Select value={formaId} onValueChange={setFormaId} required>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a forma" />
@@ -125,6 +137,53 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="pieceHeight">Altura Peça (cm)</Label>
+              <Input
+                id="pieceHeight"
+                type="number"
+                value={pieceHeight}
+                onChange={(e) => setPieceHeight(e.target.value)}
+                placeholder="10"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pieceWidth">Largura Peça (cm)</Label>
+              <Input
+                id="pieceWidth"
+                type="number"
+                value={pieceWidth}
+                onChange={(e) => setPieceWidth(e.target.value)}
+                placeholder="50"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pieceLength">Comp. Peça (cm)</Label>
+              <Input
+                id="pieceLength"
+                type="number"
+                value={pieceLength}
+                onChange={(e) => setPieceLength(e.target.value)}
+                placeholder="200"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="unitProductionTimeMinutes">Tempo Unitário (min)</Label>
+            <Input
+              id="unitProductionTimeMinutes"
+              type="number"
+              value={unitProductionTimeMinutes}
+              onChange={(e) => setUnitProductionTimeMinutes(e.target.value)}
+              placeholder="30"
+              min="1"
+              required
+            />
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

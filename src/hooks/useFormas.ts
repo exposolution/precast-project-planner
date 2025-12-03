@@ -11,6 +11,7 @@ export type FormaInsert = {
   height: number;
   capacity: number;
   status?: 'available' | 'in-use' | 'maintenance';
+  setup_minutes?: number; // New field for scheduling
 };
 
 const mapDbToForma = (db: any): Forma => ({
@@ -24,6 +25,7 @@ const mapDbToForma = (db: any): Forma => ({
   },
   capacity: db.capacity,
   status: db.status as 'available' | 'in-use' | 'maintenance',
+  setup_minutes: db.setup_minutes || 0, // New field
 });
 
 export const useFormas = () => {
@@ -56,6 +58,7 @@ export const useCreateForma = () => {
           height_cm: forma.height,
           capacity: forma.capacity,
           status: forma.status || 'available',
+          setup_minutes: forma.setup_minutes || 0, // New field
         })
         .select()
         .single();

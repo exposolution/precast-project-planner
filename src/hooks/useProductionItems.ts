@@ -13,6 +13,10 @@ export type ProductionItemInsert = {
   priority: Priority;
   status?: 'pending' | 'in-progress' | 'completed' | 'delayed';
   notes?: string;
+  pieceHeight: number; // New field
+  pieceWidth: number;  // New field
+  pieceLength: number; // New field
+  unitProductionTimeMinutes: number; // New field
 };
 
 const mapDbToProductionItem = (db: any): ProductionItem => ({
@@ -26,6 +30,10 @@ const mapDbToProductionItem = (db: any): ProductionItem => ({
   priority: db.priority as Priority,
   status: db.status as 'pending' | 'in-progress' | 'completed' | 'delayed',
   notes: db.notes,
+  pieceHeight: db.piece_height, // New field
+  pieceWidth: db.piece_width,   // New field
+  pieceLength: db.piece_length, // New field
+  unitProductionTimeMinutes: db.unit_production_time_minutes, // New field
 });
 
 export const useProductionItems = () => {
@@ -60,6 +68,10 @@ export const useCreateProductionItem = () => {
           priority: item.priority,
           status: item.status || 'pending',
           notes: item.notes,
+          piece_height: item.pieceHeight, // New field
+          piece_width: item.pieceWidth,   // New field
+          piece_length: item.pieceLength, // New field
+          unit_production_time_minutes: item.unitProductionTimeMinutes, // New field
         })
         .select()
         .single();

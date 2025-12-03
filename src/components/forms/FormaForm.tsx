@@ -16,6 +16,7 @@ export const FormaForm = () => {
   const [height, setHeight] = useState('');
   const [capacity, setCapacity] = useState('');
   const [status, setStatus] = useState<'available' | 'in-use' | 'maintenance'>('available');
+  const [setupMinutes, setSetupMinutes] = useState(''); // New state
 
   const createForma = useCreateForma();
 
@@ -30,6 +31,7 @@ export const FormaForm = () => {
         height: Number(height),
         capacity: Number(capacity),
         status,
+        setup_minutes: Number(setupMinutes), // Include new field
       },
       {
         onSuccess: () => {
@@ -41,6 +43,7 @@ export const FormaForm = () => {
           setHeight('');
           setCapacity('');
           setStatus('available');
+          setSetupMinutes(''); // Reset new field
         },
       }
     );
@@ -129,18 +132,30 @@ export const FormaForm = () => {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
-              <Select value={status} onValueChange={(v) => setStatus(v as any)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="available">Disponível</SelectItem>
-                  <SelectItem value="in-use">Em Uso</SelectItem>
-                  <SelectItem value="maintenance">Manutenção</SelectItem>
-                </SelectContent>
-              </Select>
+              <Label htmlFor="setupMinutes">Setup (min)</Label>
+              <Input
+                id="setupMinutes"
+                type="number"
+                value={setupMinutes}
+                onChange={(e) => setSetupMinutes(e.target.value)}
+                placeholder="20"
+                min="0"
+                required
+              />
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="status">Status</Label>
+            <Select value={status} onValueChange={(v) => setStatus(v as any)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="available">Disponível</SelectItem>
+                <SelectItem value="in-use">Em Uso</SelectItem>
+                <SelectItem value="maintenance">Manutenção</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>

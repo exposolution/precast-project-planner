@@ -15,6 +15,7 @@ export const ObraForm = () => {
   const [priority, setPriority] = useState<Priority>('medium');
   const [deadline, setDeadline] = useState('');
   const [location, setLocation] = useState('');
+  const [urgencia, setUrgencia] = useState<'passa_frente' | 'normal' | 'vai_fim_fila' | `atrás_de_forma:${string}`>('normal'); // New state
 
   const createObra = useCreateObra();
 
@@ -27,6 +28,7 @@ export const ObraForm = () => {
         priority,
         deadline: new Date(deadline),
         location,
+        urgencia, // Include new field
       },
       {
         onSuccess: () => {
@@ -36,6 +38,7 @@ export const ObraForm = () => {
           setPriority('medium');
           setDeadline('');
           setLocation('');
+          setUrgencia('normal'); // Reset new field
         },
       }
     );
@@ -85,6 +88,21 @@ export const ObraForm = () => {
                 <SelectItem value="high">Alta</SelectItem>
                 <SelectItem value="medium">Média</SelectItem>
                 <SelectItem value="low">Baixa</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="urgencia">Urgência (Agendamento)</Label>
+            <Select value={urgencia} onValueChange={(v) => setUrgencia(v as any)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a urgência" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="passa_frente">Passa Frente</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="vai_fim_fila">Vai Fim da Fila</SelectItem>
+                {/* 'atrás_de_forma:X' would require a custom input or dynamic select */}
+                <SelectItem value="atrás_de_forma:Forma1">Atrás da Forma 1 (Exemplo)</SelectItem>
               </SelectContent>
             </Select>
           </div>

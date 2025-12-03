@@ -10,6 +10,7 @@ export type ObraInsert = {
   deadline: Date;
   location: string;
   status?: 'active' | 'paused' | 'completed';
+  urgencia?: 'passa_frente' | 'normal' | 'vai_fim_fila' | `atrás_de_forma:${string}`; // New field
 };
 
 const mapDbToObra = (db: any): Obra => ({
@@ -20,6 +21,7 @@ const mapDbToObra = (db: any): Obra => ({
   deadline: new Date(db.deadline),
   location: db.location,
   status: db.status as 'active' | 'paused' | 'completed',
+  urgencia: db.urgencia as 'passa_frente' | 'normal' | 'vai_fim_fila' | `atrás_de_forma:${string}`, // New field
 });
 
 export const useObras = () => {
@@ -51,6 +53,7 @@ export const useCreateObra = () => {
           deadline: obra.deadline.toISOString(),
           location: obra.location,
           status: obra.status || 'active',
+          urgencia: obra.urgencia || 'normal', // New field
         })
         .select()
         .single();
