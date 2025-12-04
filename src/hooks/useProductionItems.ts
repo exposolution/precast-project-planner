@@ -13,10 +13,10 @@ export type ProductionItemInsert = {
   priority: Priority;
   status?: 'pending' | 'in-progress' | 'completed' | 'delayed';
   notes?: string;
-  altura: number; // New field
-  base: number; // New field
-  comprimento: number; // New field
-  tempoUnitarioMinutos: number; // New field
+  altura: number | null; // Allow null
+  base: number | null;   // Allow null
+  comprimento: number | null; // Allow null
+  tempoUnitarioMinutos: number | null; // Allow null
 };
 
 const mapDbToProductionItem = (db: any): ProductionItem => ({
@@ -68,10 +68,10 @@ export const useCreateProductionItem = () => {
           priority: item.priority,
           status: item.status || 'pending',
           notes: item.notes,
-          altura_cm: item.altura, // Insert new field
-          base_cm: item.base,     // Insert new field
-          comprimento_cm: item.comprimento, // Insert new field
-          tempo_unitario_minutos: item.tempoUnitarioMinutos, // Insert new field
+          altura_cm: item.altura, // Insert new field (can be null)
+          base_cm: item.base,     // Insert new field (can be null)
+          comprimento_cm: item.comprimento, // Insert new field (can be null)
+          tempo_unitario_minutos: item.tempoUnitarioMinutos, // Insert new field (can be null)
         })
         .select()
         .single();

@@ -69,7 +69,7 @@ export function FormasList({ formas, productionItems }: FormasListProps) {
                   
                   <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                     <span>
-                      {forma.dimensions.length}×{forma.dimensions.width}×{forma.dimensions.height}cm
+                      {forma.dimensions.comprimento_max}×{forma.dimensions.base_max}×{forma.dimensions.altura_max}cm
                     </span>
                     <span>•</span>
                     <span>{forma.capacity} pç/dia</span>

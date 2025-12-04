@@ -41,10 +41,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
         endDate: new Date(endDate),
         priority,
         notes: notes || undefined,
-        altura: Number(altura), // Pass new field
-        base: Number(base),     // Pass new field
-        comprimento: Number(comprimento), // Pass new field
-        tempoUnitarioMinutos: Number(tempoUnitarioMinutos), // Pass new field
+        altura: altura ? Number(altura) : null, // Pass null if empty
+        base: base ? Number(base) : null,     // Pass null if empty
+        comprimento: comprimento ? Number(comprimento) : null, // Pass null if empty
+        tempoUnitarioMinutos: tempoUnitarioMinutos ? Number(tempoUnitarioMinutos) : null, // Pass null if empty
       },
       {
         onSuccess: () => {
