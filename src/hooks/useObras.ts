@@ -1,12 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Obra, Priority } from '@/types/production';
+import { Obra, Priority, Urgency } from '@/types/production';
 import { toast } from '@/hooks/use-toast';
 
 export type ObraInsert = {
   name: string;
   code: string;
   priority: Priority;
+  urgency?: Urgency; // Make urgency optional for insert
   deadline: Date;
   location: string;
   status?: 'active' | 'paused' | 'completed';
@@ -17,6 +18,7 @@ const mapDbToObra = (db: any): Obra => ({
   name: db.name,
   code: db.code,
   priority: db.priority as Priority,
+  urgency: db.urgencia as Urgency, // Map new urgency field
   deadline: new Date(db.deadline),
   location: db.location,
   status: db.status as 'active' | 'paused' | 'completed',
@@ -48,6 +50,7 @@ export const useCreateObra = () => {
           name: obra.name,
           code: obra.code,
           priority: obra.priority,
+          urgencia: obra.urgency || 'normal', // Default to 'normal' if not provided
           deadline: obra.deadline.toISOString(),
           location: obra.location,
           status: obra.status || 'active',

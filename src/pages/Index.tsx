@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProductionQueue } from '@/components/dashboard/ProductionQueue';
@@ -11,9 +11,9 @@ import { ProductionItemForm } from '@/components/forms/ProductionItemForm';
 import { useObras } from '@/hooks/useObras';
 import { useFormas } from '@/hooks/useFormas';
 import { useProductionItems } from '@/hooks/useProductionItems';
-import { getPriorityValue } from '@/data/mockData';
+import { generateGanttSchedule } from '@/utils/ganttScheduler'; // Import the new scheduler
+import { getPriorityValue } from '@/data/mockData'; // Still used for sorting production items in ProductionQueue
 import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers, Loader2 } from 'lucide-react';
-import { useState } from 'react';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -23,6 +23,22 @@ const Index = () => {
   const { data: productionItems = [], isLoading: loadingItems } = useProductionItems();
 
   const isLoading = loadingObras || loadingFormas || loadingItems;
+
+  // Generate scheduled lots using the new algorithm
+  const scheduledLotes = useMemo(() => {
+    if (isLoading || obras.length === 0 || formas.length === 0 || productionItems.length === 0) {
+      return [];
+    }
+    const initialStartTime = new Date(); // Start scheduling from now
+    initialStartTime.setHours(7, 0, 0, 0); // Set to 07:00 AM today
+
+    return generateGanttSchedule(obras, formas, productionItems, {
+      initialStartTime,
+      workDayStartHour: 7, // 07:00
+      workDayEndHour: 17,  // 17:00
+      workDays: [1, 2, 3, 4, 5], // Monday to Friday
+    });
+  }, [obras, formas, productionItems, isLoading]);
 
   // Sort production items by priority (obra priority first, then item priority, then by size)
   const sortedProductionItems = useMemo(() => {
@@ -38,10 +54,11 @@ const Index = () => {
       if (itemPriorityDiff !== 0) return itemPriorityDiff;
 
       // Then by forma size (larger first)
+      // Note: Forma dimensions are now altura_max, base_max, comprimento_max
       const formaA = formas.find(f => f.id === a.formaId);
       const formaB = formas.find(f => f.id === b.formaId);
-      const sizeA = (formaA?.dimensions.length || 0) * (formaA?.dimensions.width || 0) * (formaA?.dimensions.height || 0);
-      const sizeB = (formaB?.dimensions.length || 0) * (formaB?.dimensions.width || 0) * (formaB?.dimensions.height || 0);
+      const sizeA = (formaA?.dimensions.comprimento_max || 0) * (formaA?.dimensions.base_max || 0) * (formaA?.dimensions.altura_max || 0);
+      const sizeB = (formaB?.dimensions.comprimento_max || 0) * (formaB?.dimensions.base_max || 0) * (formaB?.dimensions.altura_max || 0);
       return sizeB - sizeA;
     });
   }, [productionItems, obras, formas]);
@@ -151,7 +168,7 @@ const Index = () => {
 
             {/* Gantt Preview */}
             <GanttChart
-              items={sortedProductionItems}
+              lotes={scheduledLotes} // Pass scheduledLotes here
               obras={obras}
               formas={formas}
             />
@@ -188,7 +205,7 @@ const Index = () => {
               <ProductionItemForm obras={obras} formas={formas} />
             </div>
             <GanttChart
-              items={sortedProductionItems}
+              lotes={scheduledLotes} // Pass scheduledLotes here
               obras={obras}
               formas={formas}
             />

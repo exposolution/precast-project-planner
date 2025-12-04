@@ -23,6 +23,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
   const [endDate, setEndDate] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [notes, setNotes] = useState('');
+  const [altura, setAltura] = useState(''); // New state
+  const [base, setBase] = useState('');     // New state
+  const [comprimento, setComprimento] = useState(''); // New state
+  const [tempoUnitarioMinutos, setTempoUnitarioMinutos] = useState(''); // New state
 
   const createItem = useCreateProductionItem();
 
@@ -31,12 +35,16 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
     createItem.mutate(
       {
         obraId,
-        formaId,
+        formaId: formaId || null, // Allow formaId to be null if not selected
         quantity: Number(quantity),
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         priority,
         notes: notes || undefined,
+        altura: Number(altura), // Pass new field
+        base: Number(base),     // Pass new field
+        comprimento: Number(comprimento), // Pass new field
+        tempoUnitarioMinutos: Number(tempoUnitarioMinutos), // Pass new field
       },
       {
         onSuccess: () => {
@@ -48,6 +56,10 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
           setEndDate('');
           setPriority('medium');
           setNotes('');
+          setAltura('');
+          setBase('');
+          setComprimento('');
+          setTempoUnitarioMinutos('');
         },
       }
     );
@@ -83,8 +95,8 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="forma">Forma/Seção</Label>
-              <Select value={formaId} onValueChange={setFormaId} required>
+              <Label htmlFor="forma">Forma/Seção (Opcional)</Label>
+              <Select value={formaId} onValueChange={setFormaId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a forma" />
                 </SelectTrigger>
@@ -96,6 +108,58 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="altura">Altura (cm)</Label>
+              <Input
+                id="altura"
+                type="number"
+                value={altura}
+                onChange={(e) => setAltura(e.target.value)}
+                placeholder="30"
+                min="1"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="base">Base (cm)</Label>
+              <Input
+                id="base"
+                type="number"
+                value={base}
+                onChange={(e) => setBase(e.target.value)}
+                placeholder="40"
+                min="1"
+                required
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="comprimento">Comprimento (cm)</Label>
+              <Input
+                id="comprimento"
+                type="number"
+                value={comprimento}
+                onChange={(e) => setComprimento(e.target.value)}
+                placeholder="200"
+                min="1"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tempoUnitarioMinutos">Tempo Unitário (min)</Label>
+              <Input
+                id="tempoUnitarioMinutos"
+                type="number"
+                value={tempoUnitarioMinutos}
+                onChange={(e) => setTempoUnitarioMinutos(e.target.value)}
+                placeholder="60"
+                min="1"
+                required
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-4">

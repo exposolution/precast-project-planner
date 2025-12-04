@@ -6,13 +6,15 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateObra } from '@/hooks/useObras';
 import { Plus } from 'lucide-react';
-import { Priority } from '@/types/production';
+import { Priority, Urgency } from '@/types/production';
 
 export const ObraForm = () => {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
+  const [urgency, setUrgency] = useState<Urgency>('normal'); // New state
+  const [atrasDeFormaId, setAtrasDeFormaId] = useState(''); // State for 'atras_de_forma'
   const [deadline, setDeadline] = useState('');
   const [location, setLocation] = useState('');
 
@@ -20,11 +22,20 @@ export const ObraForm = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    let finalUrgency = urgency;
+    if (urgency === 'atras_de_forma:' && atrasDeFormaId) {
+      finalUrgency = `atras_de_forma:${atrasDeFormaId}`;
+    } else if (urgency === 'atras_de_forma:' && !atrasDeFormaId) {
+      // If 'atras_de_forma' is selected but no ID, default to normal
+      finalUrgency = 'normal';
+    }
+
     createObra.mutate(
       {
         name,
         code,
         priority,
+        urgency: finalUrgency, // Pass new urgency field
         deadline: new Date(deadline),
         location,
       },
@@ -34,6 +45,8 @@ export const ObraForm = () => {
           setName('');
           setCode('');
           setPriority('medium');
+          setUrgency('normal');
+          setAtrasDeFormaId('');
           setDeadline('');
           setLocation('');
         },
@@ -88,6 +101,37 @@ export const ObraForm = () => {
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label htmlFor="urgency">Urgência</Label>
+            <Select value={urgency} onValueChange={(v) => {
+              setUrgency(v as Urgency);
+              if (!v.startsWith('atras_de_forma:')) {
+                setAtrasDeFormaId('');
+              }
+            }}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="passa_frente">Passa Frente</SelectItem>
+                <SelectItem value="normal">Normal</SelectItem>
+                <SelectItem value="atras_de_forma:">Atrás de Forma Específica</SelectItem>
+                <SelectItem value="vai_fim_fila">Vai Fim da Fila</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {urgency === 'atras_de_forma:' && (
+            <div className="space-y-2">
+              <Label htmlFor="atrasDeFormaId">ID da Forma para seguir</Label>
+              <Input
+                id="atrasDeFormaId"
+                value={atrasDeFormaId}
+                onChange={(e) => setAtrasDeFormaId(e.target.value)}
+                placeholder="Ex: f1"
+                required
+              />
+            </div>
+          )}
           <div className="space-y-2">
             <Label htmlFor="deadline">Prazo de Entrega</Label>
             <Input

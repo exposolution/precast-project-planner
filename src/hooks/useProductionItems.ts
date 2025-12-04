@@ -5,7 +5,7 @@ import { toast } from '@/hooks/use-toast';
 
 export type ProductionItemInsert = {
   obraId: string;
-  formaId: string;
+  formaId?: string | null; // Forma might not be assigned yet
   quantity: number;
   produced?: number;
   startDate: Date;
@@ -13,6 +13,10 @@ export type ProductionItemInsert = {
   priority: Priority;
   status?: 'pending' | 'in-progress' | 'completed' | 'delayed';
   notes?: string;
+  altura: number; // New field
+  base: number; // New field
+  comprimento: number; // New field
+  tempoUnitarioMinutos: number; // New field
 };
 
 const mapDbToProductionItem = (db: any): ProductionItem => ({
@@ -26,6 +30,10 @@ const mapDbToProductionItem = (db: any): ProductionItem => ({
   priority: db.priority as Priority,
   status: db.status as 'pending' | 'in-progress' | 'completed' | 'delayed',
   notes: db.notes,
+  altura: db.altura_cm, // Map new field
+  base: db.base_cm,     // Map new field
+  comprimento: db.comprimento_cm, // Map new field
+  tempoUnitarioMinutos: db.tempo_unitario_minutos, // Map new field
 });
 
 export const useProductionItems = () => {
@@ -52,7 +60,7 @@ export const useCreateProductionItem = () => {
         .from('production_items')
         .insert({
           obra_id: item.obraId,
-          forma_id: item.formaId,
+          forma_id: item.formaId || null, // Allow null for formaId
           quantity: item.quantity,
           produced: item.produced || 0,
           start_date: item.startDate.toISOString(),
@@ -60,6 +68,10 @@ export const useCreateProductionItem = () => {
           priority: item.priority,
           status: item.status || 'pending',
           notes: item.notes,
+          altura_cm: item.altura, // Insert new field
+          base_cm: item.base,     // Insert new field
+          comprimento_cm: item.comprimento, // Insert new field
+          tempo_unitario_minutos: item.tempoUnitarioMinutos, // Insert new field
         })
         .select()
         .single();
@@ -81,10 +93,11 @@ export const useUpdateProductionItem = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, produced, status }: { id: string; produced?: number; status?: string }) => {
+    mutationFn: async ({ id, produced, status, formaId }: { id: string; produced?: number; status?: string; formaId?: string | null }) => {
       const updates: any = {};
       if (produced !== undefined) updates.produced = produced;
       if (status) updates.status = status;
+      if (formaId !== undefined) updates.forma_id = formaId; // Allow updating formaId
 
       const { data, error } = await supabase
         .from('production_items')
