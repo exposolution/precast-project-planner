@@ -14,15 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      calendario_trabalho: {
+        Row: {
+          created_at: string
+          data: string
+          eh_feriado: boolean
+          id: string
+          nome_feriado: string | null
+          turno_fim: string
+          turno_inicio: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          eh_feriado?: boolean
+          id?: string
+          nome_feriado?: string | null
+          turno_fim?: string
+          turno_inicio?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          eh_feriado?: boolean
+          id?: string
+          nome_feriado?: string | null
+          turno_fim?: string
+          turno_inicio?: string
+        }
+        Relationships: []
+      }
       formas: {
         Row: {
           capacity: number
           code: string
           created_at: string
+          disponivel: boolean
           height_cm: number
           id: string
           length_cm: number
           name: string
+          setup_minutes: number | null
           status: Database["public"]["Enums"]["forma_status"]
           updated_at: string
           width_cm: number
@@ -31,10 +63,12 @@ export type Database = {
           capacity?: number
           code: string
           created_at?: string
+          disponivel?: boolean
           height_cm: number
           id?: string
           length_cm: number
           name: string
+          setup_minutes?: number | null
           status?: Database["public"]["Enums"]["forma_status"]
           updated_at?: string
           width_cm: number
@@ -43,15 +77,83 @@ export type Database = {
           capacity?: number
           code?: string
           created_at?: string
+          disponivel?: boolean
           height_cm?: number
           id?: string
           length_cm?: number
           name?: string
+          setup_minutes?: number | null
           status?: Database["public"]["Enums"]["forma_status"]
           updated_at?: string
           width_cm?: number
         }
         Relationships: []
+      }
+      gantt_lotes: {
+        Row: {
+          created_at: string
+          fim: string
+          forma_id: string
+          grupo_altura_cm: number
+          grupo_base_cm: number
+          id: string
+          inicio: string
+          obra_id: string
+          ordem_fila: number
+          quantidade: number
+          setup_aplicado: boolean
+          setup_minutos: number
+          tempo_producao_min: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fim: string
+          forma_id: string
+          grupo_altura_cm: number
+          grupo_base_cm: number
+          id?: string
+          inicio: string
+          obra_id: string
+          ordem_fila?: number
+          quantidade?: number
+          setup_aplicado?: boolean
+          setup_minutos?: number
+          tempo_producao_min: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fim?: string
+          forma_id?: string
+          grupo_altura_cm?: number
+          grupo_base_cm?: number
+          id?: string
+          inicio?: string
+          obra_id?: string
+          ordem_fila?: number
+          quantidade?: number
+          setup_aplicado?: boolean
+          setup_minutos?: number
+          tempo_producao_min?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_lotes_forma_id_fkey"
+            columns: ["forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gantt_lotes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       obras: {
         Row: {
@@ -64,6 +166,8 @@ export type Database = {
           priority: Database["public"]["Enums"]["priority_level"]
           status: Database["public"]["Enums"]["obra_status"]
           updated_at: string
+          urgency: Database["public"]["Enums"]["urgency_type"] | null
+          urgency_after_forma_id: string | null
         }
         Insert: {
           code: string
@@ -75,6 +179,8 @@ export type Database = {
           priority?: Database["public"]["Enums"]["priority_level"]
           status?: Database["public"]["Enums"]["obra_status"]
           updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_type"] | null
+          urgency_after_forma_id?: string | null
         }
         Update: {
           code?: string
@@ -86,8 +192,18 @@ export type Database = {
           priority?: Database["public"]["Enums"]["priority_level"]
           status?: Database["public"]["Enums"]["obra_status"]
           updated_at?: string
+          urgency?: Database["public"]["Enums"]["urgency_type"] | null
+          urgency_after_forma_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "obras_urgency_after_forma_id_fkey"
+            columns: ["urgency_after_forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       production_items: {
         Row: {
@@ -97,11 +213,15 @@ export type Database = {
           id: string
           notes: string | null
           obra_id: string
+          piece_height_cm: number | null
+          piece_length_cm: number | null
+          piece_width_cm: number | null
           priority: Database["public"]["Enums"]["priority_level"]
           produced: number
           quantity: number
           start_date: string
           status: Database["public"]["Enums"]["production_item_status"]
+          tempo_unitario_minutos: number | null
           updated_at: string
         }
         Insert: {
@@ -111,11 +231,15 @@ export type Database = {
           id?: string
           notes?: string | null
           obra_id: string
+          piece_height_cm?: number | null
+          piece_length_cm?: number | null
+          piece_width_cm?: number | null
           priority?: Database["public"]["Enums"]["priority_level"]
           produced?: number
           quantity?: number
           start_date: string
           status?: Database["public"]["Enums"]["production_item_status"]
+          tempo_unitario_minutos?: number | null
           updated_at?: string
         }
         Update: {
@@ -125,11 +249,15 @@ export type Database = {
           id?: string
           notes?: string | null
           obra_id?: string
+          piece_height_cm?: number | null
+          piece_length_cm?: number | null
+          piece_width_cm?: number | null
           priority?: Database["public"]["Enums"]["priority_level"]
           produced?: number
           quantity?: number
           start_date?: string
           status?: Database["public"]["Enums"]["production_item_status"]
+          tempo_unitario_minutos?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -165,6 +293,7 @@ export type Database = {
         | "in-progress"
         | "completed"
         | "delayed"
+      urgency_type: "passa_frente" | "normal" | "vai_fim_fila"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -301,6 +430,7 @@ export const Constants = {
         "completed",
         "delayed",
       ],
+      urgency_type: ["passa_frente", "normal", "vai_fim_fila"],
     },
   },
 } as const
