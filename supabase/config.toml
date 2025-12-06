@@ -1,1 +1,4 @@
 project_id = "awbzqdhwuutjvwcfqdpb"
+
+[functions.schedule]
+verify_jwt = false

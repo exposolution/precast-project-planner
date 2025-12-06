@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,8 +6,12 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useCreateProductionItem } from '@/hooks/useProductionItems';
-import { Plus } from 'lucide-react';
+import { useSuggestDate, DateSuggestion } from '@/hooks/useGanttSchedule';
+import { Plus, CalendarClock, Loader2, Sparkles } from 'lucide-react';
 import { Priority, Obra, Forma } from '@/types/production';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface ProductionItemFormProps {
   obras: Obra[];
@@ -26,9 +30,47 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
   const [pieceHeight, setPieceHeight] = useState(''); // New state
   const [pieceWidth, setPieceWidth] = useState('');   // New state
   const [pieceLength, setPieceLength] = useState(''); // New state
-  const [unitProductionTimeMinutes, setUnitProductionTimeMinutes] = useState(''); // New state
+  const [unitProductionTimeMinutes, setUnitProductionTimeMinutes] = useState('');
+  const [dateSuggestion, setDateSuggestion] = useState<DateSuggestion | null>(null);
 
   const createItem = useCreateProductionItem();
+  const suggestDate = useSuggestDate();
+
+  // Auto-suggest date when dimensions and quantity are filled
+  useEffect(() => {
+    const height = Number(pieceHeight);
+    const width = Number(pieceWidth);
+    const length = Number(pieceLength);
+    const qty = Number(quantity);
+    const tempo = Number(unitProductionTimeMinutes);
+
+    if (height > 0 && width > 0 && length > 0 && qty > 0 && tempo > 0) {
+      suggestDate.mutate({
+        pieceHeight: height,
+        pieceWidth: width,
+        pieceLength: length,
+        quantity: qty,
+        tempoUnitario: tempo
+      }, {
+        onSuccess: (suggestion) => {
+          if (suggestion) {
+            setDateSuggestion(suggestion);
+            // Auto-fill dates if empty
+            if (!startDate && suggestion.startDate) {
+              setStartDate(suggestion.startDate.split('T')[0]);
+            }
+            if (!endDate && suggestion.endDate) {
+              setEndDate(suggestion.endDate.split('T')[0]);
+            }
+            // Auto-select suggested forma if none selected
+            if (!formaId && suggestion.selectedForma) {
+              setFormaId(suggestion.selectedForma.id);
+            }
+          }
+        }
+      });
+    }
+  }, [pieceHeight, pieceWidth, pieceLength, quantity, unitProductionTimeMinutes]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -185,6 +227,72 @@ export const ProductionItemForm = ({ obras, formas }: ProductionItemFormProps) =
               required
             />
           </div>
+
+          {/* Date Suggestion Box */}
+          {suggestDate.isPending && (
+            <div className="flex items-center gap-2 p-3 rounded-lg bg-secondary/50 border border-border">
+              <Loader2 className="h-4 w-4 animate-spin text-primary" />
+              <span className="text-sm text-muted-foreground">Calculando data disponível...</span>
+            </div>
+          )}
+
+          {dateSuggestion && !suggestDate.isPending && (
+            <div className="p-4 rounded-lg bg-primary/10 border border-primary/30 space-y-3">
+              <div className="flex items-center gap-2 text-primary">
+                <Sparkles className="h-4 w-4" />
+                <span className="font-medium text-sm">Data Sugerida pelo Algoritmo</span>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-muted-foreground">Início:</span>
+                  <p className="font-medium text-foreground">
+                    {format(new Date(dateSuggestion.startDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Fim Previsto:</span>
+                  <p className="font-medium text-foreground">
+                    {format(new Date(dateSuggestion.endDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
+                <span>Forma: <strong className="text-foreground">{dateSuggestion.selectedForma.code}</strong> (cap. {dateSuggestion.selectedForma.capacity})</span>
+                <span>Lotes: <strong className="text-foreground">{dateSuggestion.numLotes}</strong></span>
+                <span>Tempo Total: <strong className="text-foreground">{dateSuggestion.totalMinutes} min</strong></span>
+              </div>
+
+              {dateSuggestion.compatibleFormas.length > 1 && (
+                <div className="text-xs text-muted-foreground">
+                  <span>Formas compatíveis: </span>
+                  {dateSuggestion.compatibleFormas.slice(0, 3).map((f, i) => (
+                    <span key={f.id} className={cn(f.id === dateSuggestion.selectedForma.id && 'text-primary font-medium')}>
+                      {f.code}{i < Math.min(dateSuggestion.compatibleFormas.length, 3) - 1 ? ', ' : ''}
+                    </span>
+                  ))}
+                  {dateSuggestion.compatibleFormas.length > 3 && ` +${dateSuggestion.compatibleFormas.length - 3}`}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full gap-2"
+                onClick={() => {
+                  setStartDate(dateSuggestion.startDate.split('T')[0]);
+                  setEndDate(dateSuggestion.endDate.split('T')[0]);
+                  setFormaId(dateSuggestion.selectedForma.id);
+                }}
+              >
+                <CalendarClock className="h-4 w-4" />
+                Usar Datas Sugeridas
+              </Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="startDate">Data Início</Label>

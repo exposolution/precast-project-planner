@@ -1,8 +1,9 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProductionQueue } from '@/components/dashboard/ProductionQueue';
 import { GanttChart } from '@/components/gantt/GanttChart';
+import { ScheduledGanttChart } from '@/components/gantt/ScheduledGanttChart';
 import { ObrasList } from '@/components/obras/ObrasList';
 import { FormasList } from '@/components/obras/FormasList';
 import { ObraForm } from '@/components/forms/ObraForm';
@@ -11,9 +12,10 @@ import { ProductionItemForm } from '@/components/forms/ProductionItemForm';
 import { useObras } from '@/hooks/useObras';
 import { useFormas } from '@/hooks/useFormas';
 import { useProductionItems } from '@/hooks/useProductionItems';
+import { useGanttLotes, useReschedule } from '@/hooks/useGanttSchedule';
 import { getPriorityValue } from '@/data/mockData';
-import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers, Loader2 } from 'lucide-react';
-import { useState } from 'react';
+import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers, Loader2, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -21,8 +23,10 @@ const Index = () => {
   const { data: obras = [], isLoading: loadingObras } = useObras();
   const { data: formas = [], isLoading: loadingFormas } = useFormas();
   const { data: productionItems = [], isLoading: loadingItems } = useProductionItems();
+  const { data: ganttLotes = [], isLoading: loadingLotes } = useGanttLotes();
+  const reschedule = useReschedule();
 
-  const isLoading = loadingObras || loadingFormas || loadingItems;
+  const isLoading = loadingObras || loadingFormas || loadingItems || loadingLotes;
 
   // Sort production items by priority (obra priority first, then item priority, then by size)
   const sortedProductionItems = useMemo(() => {
@@ -184,14 +188,35 @@ const Index = () => {
 
         {activeTab === 'gantt' && (
           <div className="space-y-6 animate-slide-in">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-3 items-center">
               <ProductionItemForm obras={obras} formas={formas} />
+              <Button 
+                variant="outline" 
+                className="gap-2"
+                onClick={() => reschedule.mutate()}
+                disabled={reschedule.isPending}
+              >
+                {reschedule.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                Recalcular Agenda
+              </Button>
             </div>
+            
+            <ScheduledGanttChart
+              lotes={ganttLotes}
+              obras={obras}
+              formas={formas}
+            />
+            
             <GanttChart
               items={sortedProductionItems}
               obras={obras}
               formas={formas}
             />
+            
             <ProductionQueue
               items={sortedProductionItems}
               obras={obras}
