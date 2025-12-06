@@ -12,6 +12,7 @@ export const mockObras: Obra[] = [
     deadline: addDays(today, 15),
     location: 'São Paulo, SP',
     status: 'active',
+    urgencia: 'passa_frente',
   },
   {
     id: '2',
@@ -21,6 +22,7 @@ export const mockObras: Obra[] = [
     deadline: addDays(today, 30),
     location: 'Campinas, SP',
     status: 'active',
+    urgencia: 'normal',
   },
   {
     id: '3',
@@ -30,6 +32,7 @@ export const mockObras: Obra[] = [
     deadline: addDays(today, 45),
     location: 'Guarulhos, SP',
     status: 'active',
+    urgencia: 'normal',
   },
   {
     id: '4',
@@ -39,6 +42,7 @@ export const mockObras: Obra[] = [
     deadline: addDays(today, 20),
     location: 'Manaus, AM',
     status: 'active',
+    urgencia: 'normal',
   },
   {
     id: '5',
@@ -48,6 +52,7 @@ export const mockObras: Obra[] = [
     deadline: addDays(today, 60),
     location: 'Sorocaba, SP',
     status: 'paused',
+    urgencia: 'vai_fim_fila',
   },
 ];
 
@@ -59,6 +64,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 400, width: 40, height: 60 },
     capacity: 8,
     status: 'in-use',
+    setup_minutes: 30,
   },
   {
     id: 'f2',
@@ -67,6 +73,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 300, width: 30, height: 30 },
     capacity: 12,
     status: 'available',
+    setup_minutes: 25,
   },
   {
     id: 'f3',
@@ -75,6 +82,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 200, width: 100, height: 20 },
     capacity: 4,
     status: 'in-use',
+    setup_minutes: 45,
   },
   {
     id: 'f4',
@@ -83,6 +91,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 600, width: 50, height: 80 },
     capacity: 6,
     status: 'available',
+    setup_minutes: 35,
   },
   {
     id: 'f5',
@@ -91,6 +100,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 150, width: 300, height: 15 },
     capacity: 10,
     status: 'maintenance',
+    setup_minutes: 40,
   },
   {
     id: 'f6',
@@ -99,6 +109,7 @@ export const mockFormas: Forma[] = [
     dimensions: { length: 500, width: 50, height: 50 },
     capacity: 8,
     status: 'in-use',
+    setup_minutes: 30,
   },
 ];
 
@@ -114,6 +125,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 2),
     priority: 'critical',
     status: 'in-progress',
+    pieceHeight: 60,
+    pieceWidth: 40,
+    pieceLength: 200,
+    unitProductionTimeMinutes: 45,
   },
   {
     id: 'pi2',
@@ -125,6 +140,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 5),
     priority: 'critical',
     status: 'pending',
+    pieceHeight: 20,
+    pieceWidth: 100,
+    pieceLength: 150,
+    unitProductionTimeMinutes: 30,
   },
   {
     id: 'pi3',
@@ -136,6 +155,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 3),
     priority: 'high',
     status: 'in-progress',
+    pieceHeight: 50,
+    pieceWidth: 50,
+    pieceLength: 250,
+    unitProductionTimeMinutes: 60,
   },
   // Obra 2 - High
   {
@@ -148,6 +171,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 6),
     priority: 'high',
     status: 'pending',
+    pieceHeight: 30,
+    pieceWidth: 30,
+    pieceLength: 120,
+    unitProductionTimeMinutes: 25,
   },
   {
     id: 'pi5',
@@ -159,6 +186,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 4),
     priority: 'high',
     status: 'in-progress',
+    pieceHeight: 80,
+    pieceWidth: 50,
+    pieceLength: 300,
+    unitProductionTimeMinutes: 55,
   },
   // Obra 3 - Medium
   {
@@ -171,6 +202,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 9),
     priority: 'medium',
     status: 'pending',
+    pieceHeight: 60,
+    pieceWidth: 40,
+    pieceLength: 180,
+    unitProductionTimeMinutes: 40,
   },
   {
     id: 'pi7',
@@ -182,6 +217,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 11),
     priority: 'medium',
     status: 'pending',
+    pieceHeight: 15,
+    pieceWidth: 100,
+    pieceLength: 100,
+    unitProductionTimeMinutes: 20,
   },
   // Obra 4 - High
   {
@@ -194,6 +233,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 4),
     priority: 'high',
     status: 'in-progress',
+    pieceHeight: 20,
+    pieceWidth: 100,
+    pieceLength: 160,
+    unitProductionTimeMinutes: 35,
   },
   {
     id: 'pi9',
@@ -205,6 +248,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 6),
     priority: 'medium',
     status: 'pending',
+    pieceHeight: 30,
+    pieceWidth: 30,
+    pieceLength: 100,
+    unitProductionTimeMinutes: 20,
   },
   // Obra 5 - Low
   {
@@ -217,6 +264,10 @@ export const mockProductionItems: ProductionItem[] = [
     endDate: addDays(today, 13),
     priority: 'low',
     status: 'pending',
+    pieceHeight: 80,
+    pieceWidth: 50,
+    pieceLength: 400,
+    unitProductionTimeMinutes: 70,
   },
 ];
 
