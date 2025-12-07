@@ -3,7 +3,7 @@ import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { ProductionQueue } from '@/components/dashboard/ProductionQueue';
 import { GanttChart } from '@/components/gantt/GanttChart';
-import { ScheduledGanttChart } from '@/components/gantt/ScheduledGanttChart';
+import { CycleGanttChart } from '@/components/gantt/CycleGanttChart';
 import { ObrasList } from '@/components/obras/ObrasList';
 import { FormasList } from '@/components/obras/FormasList';
 import { ObraForm } from '@/components/forms/ObraForm';
@@ -12,7 +12,7 @@ import { ProductionItemForm } from '@/components/forms/ProductionItemForm';
 import { useObras } from '@/hooks/useObras';
 import { useFormas } from '@/hooks/useFormas';
 import { useProductionItems } from '@/hooks/useProductionItems';
-import { useGanttLotes, useReschedule } from '@/hooks/useGanttSchedule';
+import { useCycleSchedule, useReschedule } from '@/hooks/useCycleSchedule';
 import { getPriorityValue } from '@/data/mockData';
 import { Factory, Package, Clock, AlertTriangle, TrendingUp, Layers, Loader2, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,10 +23,10 @@ const Index = () => {
   const { data: obras = [], isLoading: loadingObras } = useObras();
   const { data: formas = [], isLoading: loadingFormas } = useFormas();
   const { data: productionItems = [], isLoading: loadingItems } = useProductionItems();
-  const { data: ganttLotes = [], isLoading: loadingLotes } = useGanttLotes();
+  const { data: cycleSchedule = [], isLoading: loadingSchedule } = useCycleSchedule();
   const reschedule = useReschedule();
 
-  const isLoading = loadingObras || loadingFormas || loadingItems || loadingLotes;
+  const isLoading = loadingObras || loadingFormas || loadingItems || loadingSchedule;
 
   // Sort production items by priority (obra priority first, then item priority, then by size)
   const sortedProductionItems = useMemo(() => {
@@ -205,8 +205,8 @@ const Index = () => {
               </Button>
             </div>
             
-            <ScheduledGanttChart
-              lotes={ganttLotes}
+            <CycleGanttChart
+              schedule={cycleSchedule}
               obras={obras}
               formas={formas}
             />

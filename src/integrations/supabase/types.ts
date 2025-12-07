@@ -89,6 +89,133 @@ export type Database = {
         }
         Relationships: []
       }
+      gantt_ciclo_pecas: {
+        Row: {
+          atraso_minutos: number
+          ciclo_id: string
+          created_at: string
+          fim_previsto: string
+          id: string
+          inicio_previsto: string
+          obra_id: string
+          ordem_no_ciclo: number
+          production_item_id: string
+          quantidade: number
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          atraso_minutos?: number
+          ciclo_id: string
+          created_at?: string
+          fim_previsto: string
+          id?: string
+          inicio_previsto: string
+          obra_id: string
+          ordem_no_ciclo?: number
+          production_item_id: string
+          quantidade?: number
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          atraso_minutos?: number
+          ciclo_id?: string
+          created_at?: string
+          fim_previsto?: string
+          id?: string
+          inicio_previsto?: string
+          obra_id?: string
+          ordem_no_ciclo?: number
+          production_item_id?: string
+          quantidade?: number
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_ciclo_pecas_ciclo_id_fkey"
+            columns: ["ciclo_id"]
+            isOneToOne: false
+            referencedRelation: "gantt_ciclos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gantt_ciclo_pecas_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gantt_ciclo_pecas_production_item_id_fkey"
+            columns: ["production_item_id"]
+            isOneToOne: false
+            referencedRelation: "production_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gantt_ciclos: {
+        Row: {
+          atraso_minutos: number
+          capacidade_ocupada: number
+          capacidade_total: number
+          ciclo_numero: number
+          created_at: string
+          fim: string
+          forma_id: string
+          id: string
+          inicio: string
+          predecessor_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          atraso_minutos?: number
+          capacidade_ocupada?: number
+          capacidade_total: number
+          ciclo_numero?: number
+          created_at?: string
+          fim: string
+          forma_id: string
+          id?: string
+          inicio: string
+          predecessor_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          atraso_minutos?: number
+          capacidade_ocupada?: number
+          capacidade_total?: number
+          ciclo_numero?: number
+          created_at?: string
+          fim?: string
+          forma_id?: string
+          id?: string
+          inicio?: string
+          predecessor_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_ciclos_forma_id_fkey"
+            columns: ["forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gantt_ciclos_predecessor_id_fkey"
+            columns: ["predecessor_id"]
+            isOneToOne: false
+            referencedRelation: "gantt_ciclos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gantt_lotes: {
         Row: {
           created_at: string

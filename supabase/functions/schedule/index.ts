@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Fixed cycle duration: 24 hours in minutes
+const CYCLE_DURATION_MINUTES = 24 * 60
+
 interface Obra {
   id: string
   name: string
@@ -37,37 +40,43 @@ interface ProductionItem {
   piece_width_cm: number
   piece_length_cm: number
   tempo_unitario_minutos: number
+  priority: string
 }
 
-interface CalendarioTrabalho {
-  data: string
-  turno_inicio: string
-  turno_fim: string
-  eh_feriado: boolean
-}
-
-interface Lote {
+interface Ciclo {
   id: string
-  obra_id: string
-  grupo_altura_cm: number
-  grupo_base_cm: number
   forma_id: string
-  quantidade: number
-  tempo_producao_min: number
-  setup_aplicado: boolean
-  setup_minutos: number
+  ciclo_numero: number
   inicio: Date
   fim: Date
-  ordem_fila: number
+  capacidade_total: number
+  capacidade_ocupada: number
+  predecessor_id: string | null
+  status: string
+  pecas: CicloPeca[]
 }
 
-interface PieceGroup {
-  obraId: string
-  altura: number
-  base: number
-  comprimento: number
-  tempoUnitario: number
+interface CicloPeca {
+  id: string
+  production_item_id: string
+  obra_id: string
   quantidade: number
+  inicio_previsto: Date
+  fim_previsto: Date
+  ordem_no_ciclo: number
+}
+
+interface ScheduleResult {
+  formaId: string
+  ciclos: {
+    cicloId: string
+    inicio: string
+    fim: string
+    pecas: string[]
+    capacidadeTotal: number
+    capacidadeOcupada: number
+    predecessor: string | null
+  }[]
 }
 
 // Priority order for obras
@@ -78,107 +87,88 @@ const PRIORITY_ORDER: Record<string, number> = {
   'low': 3
 }
 
-// Default work hours
-const DEFAULT_SHIFT_START = 7 * 60 // 7:00 in minutes
-const DEFAULT_SHIFT_END = 17 * 60  // 17:00 in minutes (10 hours)
-
-function parseTime(timeStr: string): number {
-  const [hours, minutes] = timeStr.split(':').map(Number)
-  return hours * 60 + minutes
-}
-
-function isWeekend(date: Date): boolean {
-  const day = date.getDay()
-  return day === 0 || day === 6
-}
-
 function formatDateKey(date: Date): string {
   return date.toISOString().split('T')[0]
 }
 
-function getWorkingHours(date: Date, calendario: Map<string, CalendarioTrabalho>): { start: number, end: number } | null {
-  if (isWeekend(date)) return null
+// Get next available date at 7:00 AM
+function getNextCycleStart(fromDate: Date = new Date()): Date {
+  const result = new Date(fromDate)
+  result.setHours(7, 0, 0, 0)
   
-  const key = formatDateKey(date)
-  const cal = calendario.get(key)
-  
-  if (cal?.eh_feriado) return null
-  
-  if (cal) {
-    return {
-      start: parseTime(cal.turno_inicio),
-      end: parseTime(cal.turno_fim)
-    }
+  // If we're past 7:00 AM today, start tomorrow
+  if (fromDate.getHours() >= 7) {
+    result.setDate(result.getDate() + 1)
   }
   
-  return { start: DEFAULT_SHIFT_START, end: DEFAULT_SHIFT_END }
-}
-
-function addMinutesWithWorkCalendar(
-  startTime: Date,
-  minutes: number,
-  calendario: Map<string, CalendarioTrabalho>
-): Date {
-  let currentDate = new Date(startTime)
-  let remainingMinutes = minutes
-  
-  while (remainingMinutes > 0) {
-    const workHours = getWorkingHours(currentDate, calendario)
-    
-    if (!workHours) {
-      // Skip to next day
-      currentDate.setDate(currentDate.getDate() + 1)
-      currentDate.setHours(Math.floor(DEFAULT_SHIFT_START / 60), DEFAULT_SHIFT_START % 60, 0, 0)
-      continue
-    }
-    
-    const currentMinutes = currentDate.getHours() * 60 + currentDate.getMinutes()
-    
-    // If before shift start, move to shift start
-    if (currentMinutes < workHours.start) {
-      currentDate.setHours(Math.floor(workHours.start / 60), workHours.start % 60, 0, 0)
-    }
-    
-    // If after shift end, move to next day's shift start
-    if (currentMinutes >= workHours.end) {
-      currentDate.setDate(currentDate.getDate() + 1)
-      currentDate.setHours(Math.floor(DEFAULT_SHIFT_START / 60), DEFAULT_SHIFT_START % 60, 0, 0)
-      continue
-    }
-    
-    const currentMins = currentDate.getHours() * 60 + currentDate.getMinutes()
-    const availableMinutes = workHours.end - currentMins
-    
-    if (remainingMinutes <= availableMinutes) {
-      currentDate.setMinutes(currentDate.getMinutes() + remainingMinutes)
-      remainingMinutes = 0
-    } else {
-      remainingMinutes -= availableMinutes
-      currentDate.setDate(currentDate.getDate() + 1)
-      currentDate.setHours(Math.floor(DEFAULT_SHIFT_START / 60), DEFAULT_SHIFT_START % 60, 0, 0)
-    }
+  // Skip weekends
+  while (result.getDay() === 0 || result.getDay() === 6) {
+    result.setDate(result.getDate() + 1)
   }
   
-  return currentDate
+  return result
 }
 
-function findNextAvailableSlot(
-  calendario: Map<string, CalendarioTrabalho>,
+// Add 24 hours to get cycle end (FS dependency)
+function getCycleEnd(start: Date): Date {
+  const end = new Date(start)
+  end.setDate(end.getDate() + 1)
+  return end
+}
+
+// Find available window in a forma's schedule
+function findAvailableWindow(
+  formaId: string,
+  requiredCapacity: number,
+  existingCiclos: Map<string, Ciclo[]>,
+  formasMap: Map<string, Forma>,
   startFrom: Date = new Date()
-): Date {
-  let date = new Date(startFrom)
-  date.setHours(Math.floor(DEFAULT_SHIFT_START / 60), DEFAULT_SHIFT_START % 60, 0, 0)
-  
-  for (let i = 0; i < 365; i++) { // Max 1 year lookahead
-    const workHours = getWorkingHours(date, calendario)
-    if (workHours) {
-      return date
-    }
-    date.setDate(date.getDate() + 1)
-    date.setHours(Math.floor(DEFAULT_SHIFT_START / 60), DEFAULT_SHIFT_START % 60, 0, 0)
+): { ciclo: Ciclo | null, newCiclo: boolean, startDate: Date, endDate: Date } {
+  const forma = formasMap.get(formaId)
+  if (!forma) {
+    throw new Error(`Forma ${formaId} not found`)
   }
   
-  return date
+  const formaCiclos = existingCiclos.get(formaId) || []
+  
+  // Check existing cycles for available capacity
+  for (const ciclo of formaCiclos) {
+    const availableCapacity = ciclo.capacidade_total - ciclo.capacidade_ocupada
+    if (availableCapacity >= requiredCapacity && new Date(ciclo.inicio) >= startFrom) {
+      return {
+        ciclo,
+        newCiclo: false,
+        startDate: new Date(ciclo.inicio),
+        endDate: new Date(ciclo.fim)
+      }
+    }
+  }
+  
+  // Need to create a new cycle - find next available slot
+  let cycleStart: Date
+  
+  if (formaCiclos.length > 0) {
+    // Get the last cycle's end time (FS dependency)
+    const lastCiclo = formaCiclos[formaCiclos.length - 1]
+    cycleStart = new Date(lastCiclo.fim)
+    
+    // Skip weekends
+    while (cycleStart.getDay() === 0 || cycleStart.getDay() === 6) {
+      cycleStart.setDate(cycleStart.getDate() + 1)
+    }
+    cycleStart.setHours(7, 0, 0, 0)
+  } else {
+    cycleStart = getNextCycleStart(startFrom)
+  }
+  
+  const cycleEnd = getCycleEnd(cycleStart)
+  
+  return {
+    ciclo: null,
+    newCiclo: true,
+    startDate: cycleStart,
+    endDate: cycleEnd
+  }
 }
 
 Deno.serve(async (req) => {
@@ -191,41 +181,66 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const supabase = createClient(supabaseUrl, supabaseKey)
 
-    const { action, pieceHeight, pieceWidth, pieceLength, quantity, tempoUnitario } = await req.json()
+    const body = await req.json()
+    const { action } = body
+
+    console.log('Schedule function called with action:', action)
 
     // Fetch all required data
-    const [obrasRes, formasRes, itemsRes, calendarioRes] = await Promise.all([
+    const [obrasRes, formasRes, itemsRes, ciclosRes] = await Promise.all([
       supabase.from('obras').select('*').eq('status', 'active'),
       supabase.from('formas').select('*').eq('disponivel', true),
       supabase.from('production_items').select('*'),
-      supabase.from('calendario_trabalho').select('*')
+      supabase.from('gantt_ciclos').select('*').order('ciclo_numero', { ascending: true })
     ])
 
     if (obrasRes.error) throw obrasRes.error
     if (formasRes.error) throw formasRes.error
     if (itemsRes.error) throw itemsRes.error
-    if (calendarioRes.error) throw calendarioRes.error
+    if (ciclosRes.error) throw ciclosRes.error
 
     const obras: Obra[] = obrasRes.data || []
     const formas: Forma[] = formasRes.data || []
     const items: ProductionItem[] = itemsRes.data || []
     
-    // Build calendar map
-    const calendario = new Map<string, CalendarioTrabalho>()
-    for (const cal of calendarioRes.data || []) {
-      calendario.set(cal.data, cal)
+    // Build maps for quick lookup
+    const formasMap = new Map<string, Forma>()
+    for (const forma of formas) {
+      formasMap.set(forma.id, forma)
+    }
+    
+    const obrasMap = new Map<string, Obra>()
+    for (const obra of obras) {
+      obrasMap.set(obra.id, obra)
     }
 
-    // Action: suggest available date for new production item
+    // ============================================
+    // ACTION: suggest_date - Find available date window for new piece
+    // ============================================
     if (action === 'suggest_date') {
-      console.log('Suggesting date for new piece:', { pieceHeight, pieceWidth, pieceLength, quantity, tempoUnitario })
+      const { pieceHeight, pieceWidth, pieceLength, quantity, tempoUnitario, formaId } = body
+      console.log('Suggesting date for piece:', { pieceHeight, pieceWidth, pieceLength, quantity, formaId })
+
+      // Find compatible forms or use specified forma
+      let compatibleFormas: Forma[]
       
-      // Find compatible forms for this piece
-      const compatibleFormas = formas.filter(f => 
-        f.height_cm >= pieceHeight && 
-        f.width_cm >= pieceWidth &&
-        f.status === 'available'
-      )
+      if (formaId) {
+        const forma = formasMap.get(formaId)
+        if (forma) {
+          compatibleFormas = [forma]
+        } else {
+          return new Response(JSON.stringify({
+            success: false,
+            error: 'Forma especificada não encontrada'
+          }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+        }
+      } else {
+        compatibleFormas = formas.filter(f => 
+          f.height_cm >= pieceHeight && 
+          f.width_cm >= pieceWidth &&
+          f.status === 'available'
+        )
+      }
       
       if (compatibleFormas.length === 0) {
         return new Response(JSON.stringify({
@@ -237,301 +252,459 @@ Deno.serve(async (req) => {
       // Calculate capacity for each compatible form
       const formasWithCapacity = compatibleFormas.map(f => ({
         ...f,
-        capacity: Math.floor(f.length_cm / pieceLength)
-      })).filter(f => f.capacity >= 1)
+        calculatedCapacity: Math.min(f.capacity, Math.floor(f.length_cm / pieceLength))
+      })).filter(f => f.calculatedCapacity >= 1)
       
       if (formasWithCapacity.length === 0) {
         return new Response(JSON.stringify({
           success: false,
-          error: 'Nenhuma forma com capacidade suficiente para o comprimento da peça'
+          error: 'Nenhuma forma com capacidade suficiente para a peça'
         }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
       }
       
-      // Select best form (highest capacity, then smallest length)
+      // Sort by capacity (highest first), then by length (smallest first for ties)
       formasWithCapacity.sort((a, b) => {
-        if (b.capacity !== a.capacity) return b.capacity - a.capacity
+        if (b.calculatedCapacity !== a.calculatedCapacity) return b.calculatedCapacity - a.calculatedCapacity
         return a.length_cm - b.length_cm
       })
       
       const selectedForma = formasWithCapacity[0]
-      const numLotes = Math.ceil(quantity / selectedForma.capacity)
-      const totalProductionTime = numLotes * selectedForma.capacity * tempoUnitario
-      const setupTime = selectedForma.setup_minutes || 30
       
-      // Get current queue end time by fetching gantt_lotes
-      const { data: existingLotes } = await supabase
-        .from('gantt_lotes')
-        .select('fim')
-        .order('fim', { ascending: false })
-        .limit(1)
-      
-      let startDate: Date
-      if (existingLotes && existingLotes.length > 0) {
-        startDate = new Date(existingLotes[0].fim)
-        // Add setup time if there's existing work
-        startDate = addMinutesWithWorkCalendar(startDate, setupTime, calendario)
-      } else {
-        startDate = findNextAvailableSlot(calendario)
+      // Build existing cycles map
+      const existingCiclos = new Map<string, Ciclo[]>()
+      for (const ciclo of ciclosRes.data || []) {
+        const formaCiclos = existingCiclos.get(ciclo.forma_id) || []
+        formaCiclos.push({
+          ...ciclo,
+          inicio: new Date(ciclo.inicio),
+          fim: new Date(ciclo.fim),
+          pecas: []
+        })
+        existingCiclos.set(ciclo.forma_id, formaCiclos)
       }
       
-      const endDate = addMinutesWithWorkCalendar(startDate, totalProductionTime, calendario)
+      // Calculate how many cycles needed
+      const piecesPerCycle = selectedForma.calculatedCapacity
+      const numCycles = Math.ceil(quantity / piecesPerCycle)
+      
+      // Find available windows
+      const windows: { startDate: Date, endDate: Date, capacity: number }[] = []
+      let searchFrom = new Date()
+      
+      for (let i = 0; i < numCycles; i++) {
+        const window = findAvailableWindow(
+          selectedForma.id,
+          Math.min(piecesPerCycle, quantity - (i * piecesPerCycle)),
+          existingCiclos,
+          formasMap,
+          searchFrom
+        )
+        
+        windows.push({
+          startDate: window.startDate,
+          endDate: window.endDate,
+          capacity: selectedForma.calculatedCapacity
+        })
+        
+        // For next iteration, search from end of this window (FS)
+        searchFrom = window.endDate
+      }
+      
+      const firstWindow = windows[0]
+      const lastWindow = windows[windows.length - 1]
+      
+      // Build alternative windows from other compatible forms
+      const alternatives = formasWithCapacity.slice(1, 4).map(f => {
+        const altWindow = findAvailableWindow(f.id, 1, existingCiclos, formasMap)
+        return {
+          formaId: f.id,
+          formaName: f.name,
+          formaCode: f.code,
+          capacity: f.calculatedCapacity,
+          startDate: altWindow.startDate.toISOString(),
+          endDate: altWindow.endDate.toISOString()
+        }
+      })
       
       return new Response(JSON.stringify({
         success: true,
         suggestion: {
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
+          startDate: firstWindow.startDate.toISOString(),
+          endDate: lastWindow.endDate.toISOString(),
           selectedForma: {
             id: selectedForma.id,
             name: selectedForma.name,
             code: selectedForma.code,
-            capacity: selectedForma.capacity
+            capacity: selectedForma.calculatedCapacity
           },
-          numLotes,
-          totalMinutes: totalProductionTime + setupTime,
-          compatibleFormas: formasWithCapacity.map(f => ({
-            id: f.id,
-            name: f.name,
-            code: f.code,
-            capacity: f.capacity
-          }))
+          numCycles,
+          totalPieces: quantity,
+          cycleDurationHours: 24,
+          windows: windows.map(w => ({
+            startDate: w.startDate.toISOString(),
+            endDate: w.endDate.toISOString(),
+            capacity: w.capacity
+          })),
+          alternatives
         }
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Action: full reschedule
+    // ============================================
+    // ACTION: reschedule - Full schedule recalculation with FS dependencies
+    // ============================================
     if (action === 'reschedule') {
-      console.log('Starting full reschedule...')
+      console.log('Starting full reschedule with FS dependencies...')
       console.log(`Obras: ${obras.length}, Formas: ${formas.length}, Items: ${items.length}`)
 
-      // 1. Sort obras by urgency priority
+      // 1. Sort obras by urgency/priority
       const sortedObras = [...obras].sort((a, b) => {
-        // passa_frente has highest priority
         if (a.urgency === 'passa_frente' && b.urgency !== 'passa_frente') return -1
         if (b.urgency === 'passa_frente' && a.urgency !== 'passa_frente') return 1
-        
-        // vai_fim_fila has lowest priority
         if (a.urgency === 'vai_fim_fila' && b.urgency !== 'vai_fim_fila') return 1
         if (b.urgency === 'vai_fim_fila' && a.urgency !== 'vai_fim_fila') return -1
         
-        // For normal and atrás_de_forma, sort by priority
+        // Sort by deadline, then priority
+        const deadlineDiff = new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
+        if (deadlineDiff !== 0) return deadlineDiff
+        
         return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority]
       })
 
-      // 2. Group pieces by (altura, base) for each obra
-      const obraGroups = new Map<string, PieceGroup[]>()
-      
+      // 2. Group items by obra and forma
+      const obraItems = new Map<string, ProductionItem[]>()
       for (const item of items) {
         if (!item.piece_height_cm || !item.piece_width_cm || !item.piece_length_cm) continue
-        
-        const group: PieceGroup = {
-          obraId: item.obra_id,
-          altura: item.piece_height_cm,
-          base: item.piece_width_cm,
-          comprimento: item.piece_length_cm,
-          tempoUnitario: item.tempo_unitario_minutos || 60,
-          quantidade: item.quantity
-        }
-        
-        const existing = obraGroups.get(item.obra_id) || []
-        // Merge with existing group if same dimensions
-        const existingGroup = existing.find(g => 
-          g.altura === group.altura && g.base === group.base && g.comprimento === group.comprimento
-        )
-        if (existingGroup) {
-          existingGroup.quantidade += group.quantidade
-        } else {
-          existing.push(group)
-        }
-        obraGroups.set(item.obra_id, existing)
+        const existing = obraItems.get(item.obra_id) || []
+        existing.push(item)
+        obraItems.set(item.obra_id, existing)
+      }
+      
+      // Sort items within each obra by priority
+      for (const [obraId, obraItemList] of obraItems) {
+        obraItemList.sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
       }
 
-      // 3. For each group, find compatible forms and calculate capacity
-      const lotes: Lote[] = []
-      const filaFinal: Lote[] = []
-      const lotesAtrasDe = new Map<string, Lote[]>() // forma_id -> lotes to insert after
-      const lotesFimFila: Lote[] = []
+      // 3. Clear existing schedule
+      await supabase.from('gantt_ciclo_pecas').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+      await supabase.from('gantt_ciclos').delete().neq('id', '00000000-0000-0000-0000-000000000000')
 
+      // 4. Build new schedule with FS dependencies
+      const newCiclos: Map<string, Ciclo[]> = new Map()
+      const cicloPecas: CicloPeca[] = []
+      
+      // Process each obra in order
       for (const obra of sortedObras) {
-        const groups = obraGroups.get(obra.id) || []
-        const obraLotes: Lote[] = []
-
-        for (const group of groups) {
-          // Find compatible forms
-          const compatibleFormas = formas.filter(f => 
-            f.height_cm >= group.altura && 
-            f.width_cm >= group.base &&
-            f.status === 'available'
-          )
-
-          // Calculate capacity for each
-          const formasWithCapacity = compatibleFormas.map(f => ({
-            forma: f,
-            capacity: Math.floor(f.length_cm / group.comprimento)
-          })).filter(fc => fc.capacity >= 1)
-
-          if (formasWithCapacity.length === 0) {
-            console.log(`No compatible forma for group: ${group.altura}x${group.base}x${group.comprimento}`)
+        const obraItemsList = obraItems.get(obra.id) || []
+        
+        for (const item of obraItemsList) {
+          const forma = formasMap.get(item.forma_id)
+          if (!forma) {
+            console.log(`Forma ${item.forma_id} not found for item ${item.id}`)
             continue
           }
-
-          // Select best form (highest capacity, then smallest length)
-          formasWithCapacity.sort((a, b) => {
-            if (b.capacity !== a.capacity) return b.capacity - a.capacity
-            return a.forma.length_cm - b.forma.length_cm
-          })
-
-          const selected = formasWithCapacity[0]
-          const numLotes = Math.ceil(group.quantidade / selected.capacity)
-
-          // Create lotes
-          for (let i = 0; i < numLotes; i++) {
-            const qtdNoLote = Math.min(selected.capacity, group.quantidade - (i * selected.capacity))
-            const tempoProducao = qtdNoLote * group.tempoUnitario
-
-            obraLotes.push({
+          
+          // Calculate capacity based on piece dimensions
+          const capacityByLength = Math.floor(forma.length_cm / item.piece_length_cm)
+          const effectiveCapacity = Math.min(forma.capacity, capacityByLength)
+          
+          if (effectiveCapacity < 1) {
+            console.log(`Form ${forma.id} has no capacity for item ${item.id}`)
+            continue
+          }
+          
+          // Distribute pieces across cycles
+          let remainingQty = item.quantity
+          
+          while (remainingQty > 0) {
+            const qtyInCycle = Math.min(effectiveCapacity, remainingQty)
+            
+            // Find or create a cycle with available capacity
+            const formaCiclos = newCiclos.get(forma.id) || []
+            let targetCiclo: Ciclo | null = null
+            
+            // Check existing cycles for available capacity
+            for (const ciclo of formaCiclos) {
+              const available = ciclo.capacidade_total - ciclo.capacidade_ocupada
+              if (available >= qtyInCycle) {
+                targetCiclo = ciclo
+                break
+              }
+            }
+            
+            // Create new cycle if needed (FS: starts after last cycle ends)
+            if (!targetCiclo) {
+              const lastCiclo = formaCiclos[formaCiclos.length - 1]
+              let cycleStart: Date
+              
+              if (lastCiclo) {
+                // FS dependency: new cycle starts when previous ends
+                cycleStart = new Date(lastCiclo.fim)
+                // Skip weekends
+                while (cycleStart.getDay() === 0 || cycleStart.getDay() === 6) {
+                  cycleStart.setDate(cycleStart.getDate() + 1)
+                }
+                cycleStart.setHours(7, 0, 0, 0)
+              } else {
+                cycleStart = getNextCycleStart()
+              }
+              
+              const cycleEnd = getCycleEnd(cycleStart)
+              
+              targetCiclo = {
+                id: crypto.randomUUID(),
+                forma_id: forma.id,
+                ciclo_numero: formaCiclos.length + 1,
+                inicio: cycleStart,
+                fim: cycleEnd,
+                capacidade_total: effectiveCapacity,
+                capacidade_ocupada: 0,
+                predecessor_id: lastCiclo?.id || null,
+                status: 'scheduled',
+                pecas: []
+              }
+              
+              formaCiclos.push(targetCiclo)
+              newCiclos.set(forma.id, formaCiclos)
+            }
+            
+            // Add piece to cycle
+            const peca: CicloPeca = {
               id: crypto.randomUUID(),
+              production_item_id: item.id,
               obra_id: obra.id,
-              grupo_altura_cm: group.altura,
-              grupo_base_cm: group.base,
-              forma_id: selected.forma.id,
-              quantidade: qtdNoLote,
-              tempo_producao_min: tempoProducao,
-              setup_aplicado: false,
-              setup_minutos: selected.forma.setup_minutes || 30,
-              inicio: new Date(),
-              fim: new Date(),
-              ordem_fila: 0
-            })
+              quantidade: qtyInCycle,
+              inicio_previsto: targetCiclo.inicio,
+              fim_previsto: targetCiclo.fim,
+              ordem_no_ciclo: targetCiclo.pecas.length + 1
+            }
+            
+            targetCiclo.pecas.push(peca)
+            targetCiclo.capacidade_ocupada += qtyInCycle
+            cicloPecas.push(peca)
+            
+            remainingQty -= qtyInCycle
           }
         }
+      }
 
-        // Insert lotes based on urgency
-        if (obra.urgency === 'passa_frente') {
-          // Insert at beginning
-          filaFinal.unshift(...obraLotes)
-        } else if (obra.urgency === 'vai_fim_fila') {
-          // Insert at end (collect for later)
-          lotesFimFila.push(...obraLotes)
-        } else if (obra.urgency_after_forma_id) {
-          // Collect for insertion after specific forma
-          const existing = lotesAtrasDe.get(obra.urgency_after_forma_id) || []
-          existing.push(...obraLotes)
-          lotesAtrasDe.set(obra.urgency_after_forma_id, existing)
-        } else {
-          // Normal - append to queue
-          filaFinal.push(...obraLotes)
+      // 5. Save to database
+      const ciclosToInsert = []
+      for (const [formaId, formaCiclos] of newCiclos) {
+        for (const ciclo of formaCiclos) {
+          ciclosToInsert.push({
+            id: ciclo.id,
+            forma_id: ciclo.forma_id,
+            ciclo_numero: ciclo.ciclo_numero,
+            inicio: ciclo.inicio.toISOString(),
+            fim: ciclo.fim.toISOString(),
+            capacidade_total: ciclo.capacidade_total,
+            capacidade_ocupada: ciclo.capacidade_ocupada,
+            predecessor_id: ciclo.predecessor_id,
+            status: ciclo.status
+          })
+        }
+      }
+      
+      if (ciclosToInsert.length > 0) {
+        const { error: insertCiclosError } = await supabase.from('gantt_ciclos').insert(ciclosToInsert)
+        if (insertCiclosError) {
+          console.error('Error inserting ciclos:', insertCiclosError)
+          throw insertCiclosError
+        }
+      }
+      
+      const pecasToInsert = cicloPecas.map(p => ({
+        id: p.id,
+        ciclo_id: [...newCiclos.values()].flat().find(c => c.pecas.includes(p))?.id,
+        production_item_id: p.production_item_id,
+        obra_id: p.obra_id,
+        quantidade: p.quantidade,
+        inicio_previsto: p.inicio_previsto.toISOString(),
+        fim_previsto: p.fim_previsto.toISOString(),
+        ordem_no_ciclo: p.ordem_no_ciclo
+      })).filter(p => p.ciclo_id)
+      
+      if (pecasToInsert.length > 0) {
+        const { error: insertPecasError } = await supabase.from('gantt_ciclo_pecas').insert(pecasToInsert)
+        if (insertPecasError) {
+          console.error('Error inserting pecas:', insertPecasError)
+          throw insertPecasError
         }
       }
 
-      // Insert lotes "atrás_de_forma" after their target forma
-      for (const [formaId, lotesToInsert] of lotesAtrasDe) {
-        // Find last occurrence of this forma in filaFinal
-        let lastIndex = -1
-        for (let i = filaFinal.length - 1; i >= 0; i--) {
-          if (filaFinal[i].forma_id === formaId) {
-            lastIndex = i
-            break
-          }
-        }
-        
-        if (lastIndex >= 0) {
-          filaFinal.splice(lastIndex + 1, 0, ...lotesToInsert)
-        } else {
-          // Forma not found, append to end
-          filaFinal.push(...lotesToInsert)
-        }
+      // 6. Build response in expected format
+      const result: ScheduleResult[] = []
+      for (const [formaId, formaCiclos] of newCiclos) {
+        result.push({
+          formaId,
+          ciclos: formaCiclos.map(c => ({
+            cicloId: c.id,
+            inicio: c.inicio.toISOString(),
+            fim: c.fim.toISOString(),
+            pecas: c.pecas.map(p => p.production_item_id),
+            capacidadeTotal: c.capacidade_total,
+            capacidadeOcupada: c.capacidade_ocupada,
+            predecessor: c.predecessor_id
+          }))
+        })
       }
 
-      // Append fim_fila lotes at the end
-      filaFinal.push(...lotesFimFila)
-
-      // 4. Generate sequential schedule with work calendar
-      let currentTime = findNextAvailableSlot(calendario)
-      let lastFormaId: string | null = null
-
-      for (let i = 0; i < filaFinal.length; i++) {
-        const lote = filaFinal[i]
-        lote.ordem_fila = i + 1
-
-        // Apply setup if forma changed
-        if (lastFormaId !== null && lastFormaId !== lote.forma_id) {
-          lote.setup_aplicado = true
-          currentTime = addMinutesWithWorkCalendar(currentTime, lote.setup_minutos, calendario)
-        }
-
-        lote.inicio = new Date(currentTime)
-        currentTime = addMinutesWithWorkCalendar(currentTime, lote.tempo_producao_min, calendario)
-        lote.fim = new Date(currentTime)
-
-        lastFormaId = lote.forma_id
-      }
-
-      // 5. Save to database - delete old lotes and insert new ones
-      const { error: deleteError } = await supabase.from('gantt_lotes').delete().neq('id', '00000000-0000-0000-0000-000000000000')
-      if (deleteError) {
-        console.error('Error deleting old lotes:', deleteError)
-      }
-
-      if (filaFinal.length > 0) {
-        const lotesToInsert = filaFinal.map(l => ({
-          id: l.id,
-          obra_id: l.obra_id,
-          forma_id: l.forma_id,
-          grupo_altura_cm: l.grupo_altura_cm,
-          grupo_base_cm: l.grupo_base_cm,
-          quantidade: l.quantidade,
-          tempo_producao_min: l.tempo_producao_min,
-          setup_aplicado: l.setup_aplicado,
-          setup_minutos: l.setup_minutos,
-          inicio: l.inicio.toISOString(),
-          fim: l.fim.toISOString(),
-          ordem_fila: l.ordem_fila
-        }))
-
-        const { error: insertError } = await supabase.from('gantt_lotes').insert(lotesToInsert)
-        if (insertError) {
-          console.error('Error inserting lotes:', insertError)
-          throw insertError
-        }
-      }
-
-      console.log(`Schedule complete: ${filaFinal.length} lotes created`)
+      console.log(`Schedule complete: ${ciclosToInsert.length} cycles, ${pecasToInsert.length} pieces`)
 
       return new Response(JSON.stringify({
         success: true,
-        message: `Agendamento completo: ${filaFinal.length} lotes criados`,
-        lotes: filaFinal.map(l => ({
-          ...l,
-          inicio: l.inicio.toISOString(),
-          fim: l.fim.toISOString()
-        }))
+        message: `Agendamento completo: ${ciclosToInsert.length} ciclos, ${pecasToInsert.length} peças`,
+        schedule: result
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
-    // Action: get current schedule
-    if (action === 'get_schedule') {
-      const { data: lotes, error } = await supabase
-        .from('gantt_lotes')
+    // ============================================
+    // ACTION: apply_delay - Apply delay to a cycle and propagate
+    // ============================================
+    if (action === 'apply_delay') {
+      const { cicloId, delayMinutes, delayType } = body
+      console.log('Applying delay:', { cicloId, delayMinutes, delayType })
+      
+      // Fetch the cycle
+      const { data: ciclo, error: cicloError } = await supabase
+        .from('gantt_ciclos')
         .select('*')
-        .order('ordem_fila', { ascending: true })
-
-      if (error) throw error
-
+        .eq('id', cicloId)
+        .single()
+      
+      if (cicloError) throw cicloError
+      if (!ciclo) {
+        return new Response(JSON.stringify({
+          success: false,
+          error: 'Ciclo não encontrado'
+        }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+      }
+      
+      // Get all cycles for this forma that come after this one (FS chain)
+      const { data: affectedCiclos, error: affectedError } = await supabase
+        .from('gantt_ciclos')
+        .select('*')
+        .eq('forma_id', ciclo.forma_id)
+        .gte('ciclo_numero', ciclo.ciclo_numero)
+        .order('ciclo_numero', { ascending: true })
+      
+      if (affectedError) throw affectedError
+      
+      // Apply delay to all affected cycles (FS propagation)
+      const updates = []
+      for (const c of affectedCiclos || []) {
+        const newInicio = new Date(new Date(c.inicio).getTime() + delayMinutes * 60 * 1000)
+        const newFim = new Date(new Date(c.fim).getTime() + delayMinutes * 60 * 1000)
+        
+        updates.push({
+          id: c.id,
+          inicio: newInicio.toISOString(),
+          fim: newFim.toISOString(),
+          atraso_minutos: (c.atraso_minutos || 0) + delayMinutes,
+          status: c.id === cicloId ? 'delayed' : c.status
+        })
+      }
+      
+      // Update cycles
+      for (const update of updates) {
+        await supabase
+          .from('gantt_ciclos')
+          .update({
+            inicio: update.inicio,
+            fim: update.fim,
+            atraso_minutos: update.atraso_minutos,
+            status: update.status
+          })
+          .eq('id', update.id)
+      }
+      
+      // Update pieces in affected cycles
+      for (const update of updates) {
+        await supabase
+          .from('gantt_ciclo_pecas')
+          .update({
+            inicio_previsto: update.inicio,
+            fim_previsto: update.fim,
+            status: update.id === cicloId ? 'delayed' : 'scheduled'
+          })
+          .eq('ciclo_id', update.id)
+      }
+      
       return new Response(JSON.stringify({
         success: true,
-        lotes: lotes || []
+        message: `Atraso aplicado: ${updates.length} ciclos afetados`,
+        affectedCycles: updates.length
+      }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    }
+
+    // ============================================
+    // ACTION: get_schedule - Get current schedule in structured format
+    // ============================================
+    if (action === 'get_schedule') {
+      const { data: ciclos, error: ciclosError } = await supabase
+        .from('gantt_ciclos')
+        .select(`
+          *,
+          forma:formas(*),
+          pecas:gantt_ciclo_pecas(
+            *,
+            production_item:production_items(*)
+          )
+        `)
+        .order('forma_id')
+        .order('ciclo_numero', { ascending: true })
+      
+      if (ciclosError) throw ciclosError
+      
+      // Group by forma
+      const byForma = new Map<string, any[]>()
+      for (const ciclo of ciclos || []) {
+        const formaCiclos = byForma.get(ciclo.forma_id) || []
+        formaCiclos.push(ciclo)
+        byForma.set(ciclo.forma_id, formaCiclos)
+      }
+      
+      const result = Array.from(byForma.entries()).map(([formaId, formaCiclos]) => ({
+        formaId,
+        forma: formaCiclos[0]?.forma,
+        ciclos: formaCiclos.map(c => ({
+          cicloId: c.id,
+          cicloNumero: c.ciclo_numero,
+          inicio: c.inicio,
+          fim: c.fim,
+          capacidadeTotal: c.capacidade_total,
+          capacidadeOcupada: c.capacidade_ocupada,
+          predecessor: c.predecessor_id,
+          status: c.status,
+          atrasoMinutos: c.atraso_minutos,
+          pecas: c.pecas.map((p: any) => ({
+            id: p.id,
+            productionItemId: p.production_item_id,
+            obraId: p.obra_id,
+            quantidade: p.quantidade,
+            inicioPrevisto: p.inicio_previsto,
+            fimPrevisto: p.fim_previsto,
+            status: p.status,
+            ordemNoCiclo: p.ordem_no_ciclo
+          }))
+        }))
+      }))
+      
+      return new Response(JSON.stringify({
+        success: true,
+        schedule: result
       }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
     }
 
     return new Response(JSON.stringify({
       success: false,
-      error: 'Ação não reconhecida'
+      error: 'Ação não reconhecida: ' + action
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
 
   } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-    console.error('Schedule function error:', err);
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error'
+    console.error('Schedule function error:', err)
     return new Response(JSON.stringify({
       success: false,
       error: errorMessage
