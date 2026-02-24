@@ -29,7 +29,7 @@ export const useObras = () => {
     queryKey: ['obras'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('obras')
+        .from('obras' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -45,7 +45,7 @@ export const useCreateObra = () => {
   return useMutation({
     mutationFn: async (obra: ObraInsert) => {
       const { data, error } = await supabase
-        .from('obras')
+        .from('obras' as any)
         .insert({
           name: obra.name,
           code: obra.code,
@@ -76,7 +76,7 @@ export const useDeleteObra = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('obras').delete().eq('id', id);
+      const { error } = await supabase.from('obras' as any).delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {

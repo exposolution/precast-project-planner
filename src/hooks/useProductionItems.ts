@@ -41,7 +41,7 @@ export const useProductionItems = () => {
     queryKey: ['production_items'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('production_items')
+        .from('production_items' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -57,7 +57,7 @@ export const useCreateProductionItem = () => {
   return useMutation({
     mutationFn: async (item: ProductionItemInsert) => {
       const { data, error } = await supabase
-        .from('production_items')
+        .from('production_items' as any)
         .insert({
           obra_id: item.obraId,
           forma_id: item.formaId,
@@ -98,8 +98,8 @@ export const useUpdateProductionItem = () => {
       if (produced !== undefined) updates.produced = produced;
       if (status) updates.status = status;
 
-      const { data, error } = await supabase
-        .from('production_items')
+      const { data, error } = await (supabase
+        .from('production_items' as any) as any)
         .update(updates)
         .eq('id', id)
         .select()
@@ -122,7 +122,7 @@ export const useDeleteProductionItem = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('production_items').delete().eq('id', id);
+      const { error } = await supabase.from('production_items' as any).delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
