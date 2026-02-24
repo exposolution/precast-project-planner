@@ -13,8 +13,7 @@ interface Obra {
   name: string
   code: string
   priority: 'critical' | 'high' | 'medium' | 'low'
-  urgency: 'passa_frente' | 'normal' | 'vai_fim_fila' | null
-  urgency_after_forma_id: string | null
+  urgencia: string | null
   deadline: string
 }
 
@@ -28,7 +27,6 @@ interface Forma {
   capacity: number
   setup_minutes: number
   status: string
-  disponivel: boolean
 }
 
 interface ProductionItem {
@@ -36,10 +34,10 @@ interface ProductionItem {
   obra_id: string
   forma_id: string
   quantity: number
-  piece_height_cm: number
-  piece_width_cm: number
-  piece_length_cm: number
-  tempo_unitario_minutos: number
+  piece_height: number
+  piece_width: number
+  piece_length: number
+  unit_production_time_minutes: number
   priority: string
 }
 
@@ -359,10 +357,10 @@ Deno.serve(async (req) => {
 
       // 1. Sort obras by urgency/priority
       const sortedObras = [...obras].sort((a, b) => {
-        if (a.urgency === 'passa_frente' && b.urgency !== 'passa_frente') return -1
-        if (b.urgency === 'passa_frente' && a.urgency !== 'passa_frente') return 1
-        if (a.urgency === 'vai_fim_fila' && b.urgency !== 'vai_fim_fila') return 1
-        if (b.urgency === 'vai_fim_fila' && a.urgency !== 'vai_fim_fila') return -1
+        if (a.urgencia === 'passa_frente' && b.urgencia !== 'passa_frente') return -1
+        if (b.urgencia === 'passa_frente' && a.urgencia !== 'passa_frente') return 1
+        if (a.urgencia === 'vai_fim_fila' && b.urgencia !== 'vai_fim_fila') return 1
+        if (b.urgencia === 'vai_fim_fila' && a.urgencia !== 'vai_fim_fila') return -1
         
         // Sort by deadline, then priority
         const deadlineDiff = new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
@@ -374,7 +372,7 @@ Deno.serve(async (req) => {
       // 2. Group items by obra and forma
       const obraItems = new Map<string, ProductionItem[]>()
       for (const item of items) {
-        if (!item.piece_height_cm || !item.piece_width_cm || !item.piece_length_cm) continue
+        if (!item.piece_height || !item.piece_width || !item.piece_length) continue
         const existing = obraItems.get(item.obra_id) || []
         existing.push(item)
         obraItems.set(item.obra_id, existing)
@@ -405,8 +403,8 @@ Deno.serve(async (req) => {
           }
           
           // Calculate capacity based on piece dimensions
-          const capacityByLength = Math.floor(forma.length_cm / item.piece_length_cm)
-          const effectiveCapacity = Math.min(forma.capacity, capacityByLength)
+          const capacityByLength = Math.floor(forma.length_cm / item.piece_length)
+          const effectiveCapacity = Math.min(forma.capacity, capacityByLength > 0 ? capacityByLength : forma.capacity)
           
           if (effectiveCapacity < 1) {
             console.log(`Form ${forma.id} has no capacity for item ${item.id}`)

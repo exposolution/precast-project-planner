@@ -41,12 +41,12 @@ export const useGanttLotes = () => {
     queryKey: ['gantt-lotes'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('gantt_lotes')
+        .from('gantt_lotes' as any)
         .select('*')
         .order('ordem_fila', { ascending: true });
 
       if (error) throw error;
-      return data as GanttLote[];
+      return (data as unknown as GanttLote[]) || [];
     },
   });
 };

@@ -33,7 +33,7 @@ export const useFormas = () => {
     queryKey: ['formas'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('formas')
+        .from('formas' as any)
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -49,7 +49,7 @@ export const useCreateForma = () => {
   return useMutation({
     mutationFn: async (forma: FormaInsert) => {
       const { data, error } = await supabase
-        .from('formas')
+        .from('formas' as any)
         .insert({
           name: forma.name,
           code: forma.code,
@@ -81,7 +81,7 @@ export const useDeleteForma = () => {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('formas').delete().eq('id', id);
+      const { error } = await supabase.from('formas' as any).delete().eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
