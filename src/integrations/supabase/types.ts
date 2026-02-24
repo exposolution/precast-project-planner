@@ -14,7 +14,222 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      formas: {
+        Row: {
+          capacity: number
+          code: string
+          created_at: string
+          height_cm: number
+          id: string
+          length_cm: number
+          name: string
+          setup_minutes: number
+          status: string
+          updated_at: string
+          width_cm: number
+        }
+        Insert: {
+          capacity?: number
+          code: string
+          created_at?: string
+          height_cm?: number
+          id?: string
+          length_cm?: number
+          name: string
+          setup_minutes?: number
+          status?: string
+          updated_at?: string
+          width_cm?: number
+        }
+        Update: {
+          capacity?: number
+          code?: string
+          created_at?: string
+          height_cm?: number
+          id?: string
+          length_cm?: number
+          name?: string
+          setup_minutes?: number
+          status?: string
+          updated_at?: string
+          width_cm?: number
+        }
+        Relationships: []
+      }
+      gantt_lotes: {
+        Row: {
+          created_at: string
+          fim: string
+          forma_id: string
+          grupo_altura_cm: number
+          grupo_base_cm: number
+          id: string
+          inicio: string
+          obra_id: string
+          ordem_fila: number
+          quantidade: number
+          setup_aplicado: boolean
+          setup_minutos: number
+          tempo_producao_min: number
+        }
+        Insert: {
+          created_at?: string
+          fim: string
+          forma_id: string
+          grupo_altura_cm?: number
+          grupo_base_cm?: number
+          id?: string
+          inicio: string
+          obra_id: string
+          ordem_fila?: number
+          quantidade?: number
+          setup_aplicado?: boolean
+          setup_minutos?: number
+          tempo_producao_min?: number
+        }
+        Update: {
+          created_at?: string
+          fim?: string
+          forma_id?: string
+          grupo_altura_cm?: number
+          grupo_base_cm?: number
+          id?: string
+          inicio?: string
+          obra_id?: string
+          ordem_fila?: number
+          quantidade?: number
+          setup_aplicado?: boolean
+          setup_minutos?: number
+          tempo_producao_min?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gantt_lotes_forma_id_fkey"
+            columns: ["forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gantt_lotes_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      obras: {
+        Row: {
+          code: string
+          created_at: string
+          deadline: string
+          id: string
+          location: string
+          name: string
+          priority: string
+          status: string
+          updated_at: string
+          urgencia: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          deadline: string
+          id?: string
+          location?: string
+          name: string
+          priority?: string
+          status?: string
+          updated_at?: string
+          urgencia?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          deadline?: string
+          id?: string
+          location?: string
+          name?: string
+          priority?: string
+          status?: string
+          updated_at?: string
+          urgencia?: string
+        }
+        Relationships: []
+      }
+      production_items: {
+        Row: {
+          created_at: string
+          end_date: string
+          forma_id: string
+          id: string
+          notes: string | null
+          obra_id: string
+          piece_height: number
+          piece_length: number
+          piece_width: number
+          priority: string
+          produced: number
+          quantity: number
+          start_date: string
+          status: string
+          unit_production_time_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          forma_id: string
+          id?: string
+          notes?: string | null
+          obra_id: string
+          piece_height?: number
+          piece_length?: number
+          piece_width?: number
+          priority?: string
+          produced?: number
+          quantity?: number
+          start_date: string
+          status?: string
+          unit_production_time_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          forma_id?: string
+          id?: string
+          notes?: string | null
+          obra_id?: string
+          piece_height?: number
+          piece_length?: number
+          piece_width?: number
+          priority?: string
+          produced?: number
+          quantity?: number
+          start_date?: string
+          status?: string
+          unit_production_time_minutes?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_items_forma_id_fkey"
+            columns: ["forma_id"]
+            isOneToOne: false
+            referencedRelation: "formas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_items_obra_id_fkey"
+            columns: ["obra_id"]
+            isOneToOne: false
+            referencedRelation: "obras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
