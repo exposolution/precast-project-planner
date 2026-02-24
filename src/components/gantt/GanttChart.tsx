@@ -17,20 +17,27 @@ export function GanttChart({ items, obras, formas }: GanttChartProps) {
   const getForma = (id: string) => formas.find(f => f.id === id);
 
   const { startDate, endDate, days, totalDays } = useMemo(() => {
+    if (!items || items.length === 0) {
+      const today = startOfDay(new Date());
+      const end = addDays(today, 7);
+      return { startDate: today, endDate: end, days: eachDayOfInterval({ start: today, end }), totalDays: 8 };
+    }
     const dates = items.flatMap(item => [item.startDate, item.endDate]);
     const minDate = startOfDay(new Date(Math.min(...dates.map(d => d.getTime()))));
     const maxDate = startOfDay(new Date(Math.max(...dates.map(d => d.getTime()))));
     const adjustedStart = addDays(minDate, -1);
     const adjustedEnd = addDays(maxDate, 2);
     const daysList = eachDayOfInterval({ start: adjustedStart, end: adjustedEnd });
-    
-    return {
-      startDate: adjustedStart,
-      endDate: adjustedEnd,
-      days: daysList,
-      totalDays: daysList.length,
-    };
+    return { startDate: adjustedStart, endDate: adjustedEnd, days: daysList, totalDays: daysList.length };
   }, [items]);
+
+  if (!items || items.length === 0) {
+    return (
+      <div className="bg-card rounded-lg border border-border p-8 text-center">
+        <p className="text-muted-foreground">Nenhum item de produção para exibir no Gantt.</p>
+      </div>
+    );
+  }
 
   const getBarPosition = (itemStart: Date, itemEnd: Date) => {
     const startOffset = differenceInDays(startOfDay(itemStart), startDate);
